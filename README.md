@@ -10,6 +10,7 @@ These filters ensured that the dataset selected was spatial in nature, compatibl
 
 ## 2. Application Description
 I am exploring the spatial distribution of vehicle density across different vessel types (Passenger, Cargo, Fishing, Tanker, Other) using raster-based data. This application is significant because vessel density analysis helps improve maritime safety by identifying high-traffic routes prone to accidents, assesses environmental impact by revealing regions under pressure from fishing or tanker activity, and supports climate and policy studies by showing how trade, tourism, and regulations influence marine traffic patterns.
+testing
 
 ## 3. Data Transformation and Preprocessing
 To preprocess the AIS raster dataset, I automated the conversion of raw .tif vessel density files into structured DataFrames organized by vessel type and year. Each raster was read with rasterio, and nodata values (representing land or missing regions) were replaced with NaN. The grid was reshaped into a tidy format with row, column, and density values, after which I computed the cell-center coordinates and transformed them from the raster’s CRS into geographic longitude and latitude using pyproj. Each record was then annotated with its corresponding vessel type and year, parsed from the filename.
