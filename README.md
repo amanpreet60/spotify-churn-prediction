@@ -2,35 +2,45 @@
 
 ## 1. Dataset Sourcing
 
-The dataset was obtained from the **Open Government Portal**, which provides public access to open data and information to enhance transparency. Here are the following filtering options used to source the data:
-
-**Portal Type:** Open Data,  **Collection Type:** Open Maps,  **Resource Type:** Dataset,  **Format:** GeoTIFF, TIFF  
-
-These filters ensured that the dataset selected was spatial in nature, compatible with geospatial analysis tools, and available in raster formats commonly used for environmental and spatial research. The dataset I selected contains vessel density information (like vessel tracks per day for cargo vessels, 2023) derived from **Automatic Identification System (AIS)** data. The data is provided in GeoTIFF format and captures the spatial distribution and intensity of vessel traffic across the Northwest Atlantic region. The dataset is large in size (over 4 million rows when extracted), reflecting the high temporal and spatial resolution of vessel tracking data.
+This dataset was sourced from [Kaggle](https://www.kaggle.com/datasets/nabihazahid/spotify-dataset-for-churn-analysis/data), specifically the Spotify Dataset for Churn Analysis by user nabihazahid. It is publicly available, containing features related to user demographics, engagement behavior, and account information, along with a binary churn label.
 
 ## 2. Application Description
-I am exploring the spatial distribution of vehicle density across different vessel types (Passenger, Cargo, Fishing, Tanker, Other) using raster-based data. This application is significant because vessel density analysis helps improve maritime safety by identifying high-traffic routes prone to accidents, assesses environmental impact by revealing regions under pressure from fishing or tanker activity, and supports climate and policy studies by showing how trade, tourism, and regulations influence marine traffic patterns.
-testing
 
-## 3. Data Transformation and Preprocessing
-To preprocess the AIS raster dataset, I automated the conversion of raw .tif vessel density files into structured DataFrames organized by vessel type and year. Each raster was read with rasterio, and nodata values (representing land or missing regions) were replaced with NaN. The grid was reshaped into a tidy format with row, column, and density values, after which I computed the cell-center coordinates and transformed them from the raster’s CRS into geographic longitude and latitude using pyproj. Each record was then annotated with its corresponding vessel type and year, parsed from the filename.
+The application predicts Spotify user churn using demographics, subscription type, and usage patterns to identify users likely to leave, helping target retention and improve engagement.
 
-## 4. Single-variable Analysis
-**Variable Selected:** Vessel density
+## 3. Exploratory Data Analysis
 
-**Research Question:** “Does the distribution of vessel density suggest that ships follow fixed routes, or is vessel traffic spread randomly across the ocean?”
+The Spotify churn dataset contains both categorical and numerical features. The pie chart in suplemental material shows a balanced dataset: gender (Male 33.6%, Female 33.2%, Other 33.1%), subscription types (Premium 26.4%, Free 25.2%, Student 24.5%, Family 23.8%), and device usage (Desktop 34.7%, Web 32.8%, Mobile 32.5%).
 
-The histogram of total vessel density shows that most grid cells in the Northwest Atlantic have near-zero traffic, while a small fraction exhibit extremely high vessel densities. This highly skewed distribution indicates that vessel traffic is not random but instead concentrated along fixed maritime routes. If ship movements were random, we would expect vessel density to be more evenly spread across the study area. Instead, the presence of a long right tail in the distribution suggests repeated use of specific shipping lanes, port approaches, and fishing grounds. Thus, the data provide strong evidence that vessels follow structured and predictable routes rather than dispersing randomly across the ocean.
+Numerical features show that offline_listening is strongly negatively correlated with ads listened (-0.88). Most other numerical features show weak correlations with churn, suggesting that churn depends on combinations of behaviors rather than individual variables. There are no missing values.
 
-## 5. Multi-variable Analysis
-**Variable Selected:** Vessel density and vessel type across spatial regions
+## 4. Data Splitting
+The 60%-20%-20% split was specifically chosen for this dataset to ensure enough samples per user class and feature type. With roughly 8,000 users, 60% (~4,800) in training provides sufficient examples across all genders, subscription types, and device usages for the model to learn patterns. The 20% validation (~1,600) allows reliable hyperparameter tuning (e.g., K in KNN, C in logistic regression) while keeping class proportions balanced. The remaining 20% (~1,600) test set ensures an unbiased evaluation of the model’s ability to generalize to unseen users, capturing churn patterns across different demographics and usage behaviors.
 
-**Research Question:** *How has the vessel density varied across different vessel types, and where are the densest regions for each type?*  
+## 5. Logistic Regression and k-Nearest Neighbor 
 
-The spatial patterns of vessel density in 2023 reveal clear differences between cargo and fishing activity. Cargo vessel traffic is concentrated along fixed trans-Atlantic shipping lanes and approaches to major ports such as Halifax, Boston, and New York, resulting in narrow, high-density corridors. By contrast, fishing vessels display a more diffuse but localized pattern, with hotspots on the continental shelf, particularly around Georges Bank, the Gulf of Maine, and coastal Newfoundland. These differences highlight how cargo density reflects long-distance trade routes and predictable maritime corridors, whereas fishing density is shaped by localized access to productive fishing grounds.
+I applied preprocessing transformations to the dataset by using One-Hot Encoding for categorical variables and StandardScaler for numerical features, ensuring all predictors were numerical and on the same scale to improve model performance. For model tuning, I adjusted the k parameter in KNN to balance bias and variance and the regularization parameter C in Logistic Regression to control overfitting. The most important predictors in Logistic Regression, determined from the magnitude of model coefficients, were country_CA (-0.165776), subscription_type_Free (-0.144746), and country_FR (0.135067), indicating their strong influence on predicting churn. For KNN, feature importance could not be determined as it is a non-parametric method without learned coefficients.
 
-## 5. Shiny Webpage
+## 6. Model Evaluation
 
-An interactive page is available [here](https://40nng4-amanpreet-singh.shinyapps.io/vessel_density_patterns1/), created using the shiny.
+On the test set, KNN achieved 49.9% accuracy (misclassification 50.1%) and logistic regression 45.9% accuracy (misclassification 54.1%). KNN showed slightly better specificity (0.476 vs. 0.414), while logistic regression had slightly higher sensitivity (0.589 vs. 0.565). Overall, KNN offered a more balanced trade-off between detecting churned and retained users, whereas logistic regression was more sensitive to churn but less precise. Both models, however, demonstrated low discriminative power, indicating limited effectiveness in predicting churn.
 
-The site provides two main modes of analysis. The first is a histogram view, which shows the full distribution of vessel density values and reveals whether traffic is concentrated along fixed routes or dispersed randomly across the ocean. The second is a raster comparison view, where users can select any two density maps and view them side by side to compare spatial patterns across vessel types. A dropdown menu allows switching between modes, making exploration flexible and intuitive.
+## 7. Alternative kNN Strategy
+
+I applied LMNN to learn a distance metric that pulls same-class points closer and pushes different-class points apart, setting k=5 for target neighbors and tuning KNN’s k on the validation set. This reshapes the feature space so that distances better reflect class similarity, improving KNN’s classification. On the test set, KNN with LMNN achieved higher accuracy (0.566 vs 0.499), better specificity (0.610 vs 0.476), and lower misclassification error (0.434 vs 0.501), demonstrating improved overall classification. Standard KNN showed slightly higher sensitivity (0.565 vs 0.440) and F1-score (0.369 vs 0.344), making it better at detecting churned users. Overall, using LMNN enhanced the model’s ability to separate classes, reduced errors, and produced more balanced performance across churned and retained users, while standard KNN favored minority-class recall. This shows that metric learning can meaningfully boost KNN performance, especially in datasets with class imbalance or complex feature relationships.
+
+## 8. Conclusions
+
+Churn prediction is challenging for this dataset. Both logistic regression and KNN classifiers achieved accuracy around 50–56%, which is only slightly better than random guessing. This indicates that individual features, such as age, listening time, or skip rate, have weak direct correlations with churn, and the behavior patterns that lead to churn are subtle and complex. The moderate accuracy also reflects the class imbalance, with far more users retained than churned, making it difficult for standard classifiers to correctly identify churned users without specialized techniques.
+
+Metric learning improves performance modestly. Applying LMNN to KNN increased overall accuracy, improved specificity, and reduced misclassification error compared to standard KNN. By learning a distance metric that brings same-class users closer and separates different-class users, LMNN helps the classifier better capture patterns in user behavior. However, even with LMNN, the accuracy remains around 56%, showing that while metric learning enhances performance, predicting churn in this dataset is inherently difficult due to subtle behavioral differences and imbalanced classes.
+
+## 9. Generative AI
+
+Yes, generative AI can assist in answering some parts of the assignment, particularly in writing code, suggesting common methods, or providing general explanations. For example, one could prompt a tool with:
+
+Prompt: "Split the data into a training, validation, and test sets and describe the rationale behind your choice of data splitting."
+
+Response to this promt was too gerenral and not specific to the dataset.
+
+The AI could generate the code and explain standard procedures. However, generative AI cannot fully replace manual analysis, as it does not automatically interpret dataset-specific patterns. While it can describe or plot individual variables, it cannot synthesize insights from multiple univariate and multivariate analyses or provide nuanced conclusions tailored to the actual dataset. Therefore, AI is best used as a coding and guidance aid, while interpretation, feature-specific insights, and dataset-driven conclusions must be performed manually.
