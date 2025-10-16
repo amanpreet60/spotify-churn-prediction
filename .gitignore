@@ -44,12 +44,6 @@ coverage.xml
 .hypothesis/
 
 # ====================
-# Jupyter Notebook
-# ====================
-.ipynb_checkpoints/
-*.ipynb
-
-# ====================
 # Shiny / Dash / Web Apps
 # ====================
 # Temporary or cached files
